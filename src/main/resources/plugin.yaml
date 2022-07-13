@@ -9,6 +9,8 @@ spec:
   author: halo-dev
   logo: http://localhost:8090/assets/PluginMeilisearch/static/meili-logo.svg
   pluginClass: run.halo.meilisearch.MeilisearchPlugin
+  settingName: meilisearch-settings
+  configMapName: meilisearch-settings
   homepage: https://github.com/halo-sigs/plugin-meilisearch
   displayName: "Meilisearch"
   description: "接入 Meilisearch 提供全文索引的能力"

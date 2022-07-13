@@ -1,0 +1,19 @@
+apiVersion: v1alpha1
+kind: Setting
+metadata:
+  name: meilisearch-settings
+spec:
+  - group: settings
+    label: 设置
+    formSchema:
+      - $formkit: text
+        help: MeiliSearch 的服务地址
+        label: Meilisearch Host
+        name: host
+        validation: required
+      - $formkit: text
+        label: Meilisearch Key
+        name: key
+      - $formkit: text
+        label: 索引名称
+        name: indexes

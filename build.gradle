@@ -37,6 +37,7 @@ dependencies {
     compileOnly "io.swagger.core.v3:swagger-core-jakarta:2.2.0"
     compileOnly 'org.springframework.boot:spring-boot-starter-webflux'
     annotationProcessor 'io.github.guqing:pluggable-suite:0.0.1-SNAPSHOT'
+    implementation 'com.meilisearch.sdk:meilisearch-java:0.7.2'
 
     compileOnly files("lib/halo-2.0.0-SNAPSHOT-plain.jar")
 

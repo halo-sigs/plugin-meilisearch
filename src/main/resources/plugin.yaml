@@ -1,20 +1,16 @@
 apiVersion: plugin.halo.run/v1alpha1
 kind: Plugin
 metadata:
-  # The name defines how the plugin is invoked,A unique name
-  name: apples
+  name: PluginMeilisearch
 spec:
   enabled: true
-  # 'version' is a valid semantic version string (see semver.org).
   version: 0.0.1-SNAPSHOT
   requires: "*"
-  author: guqing
-  logo: https://guqing.xyz/avatar
-  pluginClass: io.github.guqing.template.ApplePlugin
-  # 'homepage' usually links to the GitHub repository of the plugin
-  homepage: https://github.com/guqing/halo-plugin-template
-  # 'displayName' explains what the plugin does in only a few words
-  displayName: "测试插件"
-  description: "这是一个用来测试的插件"
+  author: halo-dev
+  logo: http://localhost:8090/assets/PluginMeilisearch/static/meili-logo.svg
+  pluginClass: run.halo.meilisearch.MeilisearchPlugin
+  homepage: https://github.com/halo-sigs/plugin-meilisearch
+  displayName: "Meilisearch"
+  description: "接入 Meilisearch 提供全文索引的能力"
   license: MIT
 

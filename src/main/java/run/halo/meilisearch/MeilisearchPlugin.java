@@ -1,30 +1,26 @@
-package io.github.guqing.template;
+package run.halo.meilisearch;
 
 import org.pf4j.PluginWrapper;
-import run.halo.app.extension.Scheme;
 import run.halo.app.extension.SchemeManager;
 import run.halo.app.plugin.BasePlugin;
 
 /**
- * @author guqing
+ * @author ryanwang
  * @since 2.0.0
  */
-public class ApplePlugin extends BasePlugin {
+public class MeilisearchPlugin extends BasePlugin {
     private final SchemeManager schemeManager;
 
-    public ApplePlugin(PluginWrapper wrapper) {
+    public MeilisearchPlugin(PluginWrapper wrapper) {
         super(wrapper);
         this.schemeManager = getApplicationContext().getBean(SchemeManager.class);
     }
 
     @Override
     public void start() {
-        schemeManager.register(Apple.class);
     }
 
     @Override
     public void stop() {
-        Scheme scheme = schemeManager.get(Apple.class);
-        schemeManager.unregister(scheme);
     }
 }

@@ -14,5 +14,6 @@ spec:
   homepage: https://github.com/halo-sigs/plugin-meilisearch
   displayName: "Meilisearch"
   description: "接入 Meilisearch 提供全文索引的能力"
-  license: MIT
+  license:
+    - name: "MIT"
 

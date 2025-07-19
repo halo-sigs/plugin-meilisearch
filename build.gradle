@@ -1,73 +1,51 @@
 plugins {
-    id 'org.springframework.boot' version '3.0.0-M3'
-    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
-    id "com.github.node-gradle.node" version "3.3.0"
     id 'java'
+    id "io.freefair.lombok" version "8.13"
+    id "run.halo.plugin.devtools" version "0.6.1"
 }
 
 group 'run.halo.meilisearch'
-version '0.0.1-SNAPSHOT'
-sourceCompatibility = JavaVersion.VERSION_17
 
 repositories {
-    maven { url 'https://s01.oss.sonatype.org/content/repositories/snapshots' }
-    maven { url 'https://repo.spring.io/milestone' }
     mavenCentral()
 }
 
-bootJar {
-    enabled = false
-}
-
-jar {
-    enabled = true
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    manifest.attributes(
-            'Plugin-Version': "${project.version}",
-    )
-    from {
-        configurations.runtimeClasspath.collect {
-            it.isDirectory() ? it : zipTree(it)
-        }
-    }
-}
-
 dependencies {
-    compileOnly 'io.github.guqing:pluggable-suite:0.0.1-SNAPSHOT'
-    compileOnly "io.swagger.core.v3:swagger-core-jakarta:2.2.0"
-    compileOnly 'org.springframework.boot:spring-boot-starter-webflux'
-    annotationProcessor 'io.github.guqing:pluggable-suite:0.0.1-SNAPSHOT'
-    implementation 'com.meilisearch.sdk:meilisearch-java:0.7.2'
+    implementation platform('run.halo.tools.platform:plugin:2.21.0')
+    compileOnly 'run.halo.app:api'
 
-    compileOnly files("lib/halo-2.0.0-SNAPSHOT-plain.jar")
-
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    testImplementation 'run.halo.app:api'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 test {
     useJUnitPlatform()
 }
 
-node {
-    nodeProjectDir = file("${project.projectDir}/admin-frontend")
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
-task buildFrontend(type: NpxTask) {
-    command = 'pnpm'
-    args = ['build']
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release = 21
 }
 
-task pnpmInstall(type: NpxTask) {
-    command = "pnpm"
-    args = ["install"]
+tasks.register('processUiResources', Copy) {
+    from project(':ui').layout.buildDirectory.dir('dist')
+    into layout.buildDirectory.dir('resources/main/console')
+    dependsOn project(':ui').tasks.named('assemble')
+    shouldRunAfter tasks.named('processResources')
 }
 
-build {
-    // build frontend before build
-    tasks.getByName('compileJava').dependsOn('buildFrontend')
-    tasks.getByName("buildFrontend").dependsOn("pnpmInstall")
+tasks.named('classes') {
+    dependsOn tasks.named('processUiResources')
 }
+
+halo {
+    version = '2.21'
+}
+

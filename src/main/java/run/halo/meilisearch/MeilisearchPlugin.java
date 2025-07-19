@@ -1,36 +1,31 @@
 package run.halo.meilisearch;
 
-import lombok.extern.slf4j.Slf4j;
-import org.pf4j.PluginWrapper;
 import org.springframework.stereotype.Component;
-import run.halo.app.extension.SchemeManager;
 import run.halo.app.plugin.BasePlugin;
-import run.halo.app.plugin.SettingFetcher;
+import run.halo.app.plugin.PluginContext;
 
 /**
- * @author ryanwang
- * @since 2.0.0
+ * <p>Plugin main class to manage the lifecycle of the plugin.</p>
+ * <p>This class must be public and have a public constructor.</p>
+ * <p>Only one main class extending {@link BasePlugin} is allowed per plugin.</p>
+ *
+ * @author Halo
+ * @since 1.0.0
  */
-@Slf4j
 @Component
 public class MeilisearchPlugin extends BasePlugin {
-    private final SchemeManager schemeManager;
 
-    private final SettingFetcher settingFetcher;
-
-    public MeilisearchPlugin(PluginWrapper wrapper) {
-        super(wrapper);
-        this.schemeManager = getApplicationContext().getBean(SchemeManager.class);
-        this.settingFetcher = getApplicationContext().getBean(SettingFetcher.class);
+    public MeilisearchPlugin(PluginContext pluginContext) {
+        super(pluginContext);
     }
 
     @Override
     public void start() {
-        Settings settings = settingFetcher.getGroupForObject("settings", Settings.class);
-        log.error("settings: {}", settings);
+        System.out.println("插件启动成功！");
     }
 
     @Override
     public void stop() {
+        System.out.println("插件停止！");
     }
 }

@@ -1,4 +1,4 @@
-package run.halo.meilisearchengine;
+package run.halo.meilisearch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.meilisearch.sdk.Client;
@@ -52,21 +52,21 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
                 log.warn("Failed to destroy MeilisearchSearchEngine during refreshing config", e);
             }
         }
-        
+
         try {
             this.meilisearchClient = new Client(new Config(host, apiKey));
             this.index = this.meilisearchClient.index(indexName);
-            
+
             this.index.updateSearchableAttributesSettings(SEARCH_ATTRIBUTES);
             this.index.updateFilterableAttributesSettings(new String[]{
                 "published", "recycled", "exposed", "type", "categories", "tags"
             });
             this.index.updateDisplayedAttributesSettings(new String[]{
-                "id", "metadataName", "title", "annotations", "description", "categories", "tags", 
-                "published", "recycled", "exposed", "ownerName", "creationTimestamp", 
+                "id", "metadataName", "title", "annotations", "description", "categories", "tags",
+                "published", "recycled", "exposed", "ownerName", "creationTimestamp",
                 "updateTimestamp", "permalink", "type", "content"
             });
-            
+
             this.available = true;
             log.info("Meilisearch client initialized successfully, index: {}", indexName);
         } catch (MeilisearchException e) {
@@ -89,9 +89,9 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
             log.warn("Meilisearch is not available, skipping addOrUpdate");
             return;
         }
-        
+
         List<HaloDocument> documents = Streams.of(docs).toList();
-        
+
         try {
             String documentsJson = JsonUtils.mapper().writeValueAsString(documents);
             this.index.addDocuments(documentsJson, "metadataName");
@@ -106,12 +106,12 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
             log.warn("Meilisearch is not available, skipping deleteDocument");
             return;
         }
-        
+
         var metadataNames = Streams.of(docIds).map(id -> {
             String[] split = id.split("-", 2);
             return split.length > 1 ? split[1] : id;
         }).toList();
-        
+
         try {
             this.index.deleteDocuments(metadataNames);
         } catch (MeilisearchException e) {
@@ -125,7 +125,7 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
             log.warn("Meilisearch is not available, skipping deleteAll");
             return;
         }
-        
+
         try {
             this.index.deleteAllDocuments();
         } catch (MeilisearchException e) {
@@ -138,12 +138,12 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
         if (!available) {
             return new run.halo.app.search.SearchResult();
         }
-        
+
         StringJoiner filter = new StringJoiner(" AND ");
         filter.add("recycled = false");
         filter.add("exposed = true");
         filter.add("published = true");
-        
+
         SearchRequest searchRequest = SearchRequest.builder()
             .q(searchOption.getKeyword())
             .limit(searchOption.getLimit())
@@ -159,14 +159,14 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
 
         try {
             Searchable meilisearchResult = this.index.search(searchRequest);
-            
+
             var result = new run.halo.app.search.SearchResult();
             result.setLimit(searchOption.getLimit());
             result.setTotal((long) meilisearchResult.getHits().size());
             result.setKeyword(searchOption.getKeyword());
             result.setProcessingTimeMillis(meilisearchResult.getProcessingTimeMs());
             result.setHits(convertHits(meilisearchResult.getHits()));
-                
+
             return result;
         } catch (MeilisearchException e) {
             log.error("Failed to search", e);
@@ -196,40 +196,40 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
     @Override
     public void onApplicationEvent(ConfigUpdatedEvent event) {
         var properties = event.getMeilisearchProperties();
-        
+
         var host = properties.getHost();
         var masterKey = properties.getMasterKey();
         var indexName = properties.getIndexName();
-        
+
         if (host == null || host.isEmpty()) {
             log.warn("Meilisearch host is not configured");
             return;
         }
-        
+
         refresh(host, masterKey, indexName);
     }
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        var configMapOpt = client.fetch(ConfigMap.class, "meilisearch-search-engine-config");
+        var configMapOpt = client.fetch(ConfigMap.class, "meilisearch-engine-config");
         if (configMapOpt.isEmpty()) {
             log.warn("Meilisearch configuration not found");
             return;
         }
-        
+
         var configMap = configMapOpt.get();
         var data = configMap.getData();
         if (data == null || !data.containsKey("basic")) {
             log.warn("Meilisearch configuration data is missing");
             return;
         }
-        
+
         try {
             var properties = JsonUtils.mapper().readValue(data.get("basic"), MeilisearchProperties.class);
             var host = properties.getHost();
             var masterKey = properties.getMasterKey();
             var indexName = properties.getIndexName();
-            
+
             if (host != null && !host.isEmpty()) {
                 refresh(host, masterKey, indexName);
             }
@@ -237,4 +237,4 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
             log.error("Failed to parse Meilisearch configuration", e);
         }
     }
-} 
+}

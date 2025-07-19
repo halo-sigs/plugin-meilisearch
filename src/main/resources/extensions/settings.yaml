@@ -1,7 +1,7 @@
 apiVersion: v1alpha1
 kind: Setting
 metadata:
-  name: meilisearch-search-engine-setting
+  name: meilisearch-engine-setting
 spec:
   forms:
     - group: basic
@@ -19,4 +19,4 @@ spec:
         - $formkit: text
           name: indexName
           label: "Index Name"
-          value: "halo" 
+          value: "halo"

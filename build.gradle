@@ -4,7 +4,7 @@ plugins {
     id "run.halo.plugin.devtools" version "0.6.1"
 }
 
-group 'run.halo.meilisearchengine'
+group 'run.halo.meilisearch'
 
 repositories {
     mavenCentral()
@@ -13,7 +13,7 @@ repositories {
 dependencies {
     implementation platform('run.halo.tools.platform:plugin:2.21.0')
     compileOnly 'run.halo.app:api'
-    
+
     implementation('com.meilisearch.sdk:meilisearch-java:0.12.0') {
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
     }

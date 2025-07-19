@@ -1,4 +1,4 @@
-package run.halo.meilisearchengine;
+package run.halo.meilisearch;
 
 import lombok.Getter;
 import org.springframework.context.ApplicationEvent;
@@ -13,4 +13,4 @@ public class ConfigUpdatedEvent extends ApplicationEvent {
         this.meilisearchProperties = meilisearchProperties;
     }
 
-} 
+}

@@ -3,7 +3,7 @@ plugins {
     id "com.github.node-gradle.node" version "7.1.0"
 }
 
-group 'run.halo.meilisearchengine.ui'
+group 'run.halo.meilisearch.ui'
 
 tasks.register('pnpmBuild', PnpmTask) {
     group = 'build'

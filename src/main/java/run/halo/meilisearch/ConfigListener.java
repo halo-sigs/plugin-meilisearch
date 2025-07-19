@@ -1,4 +1,4 @@
-package run.halo.meilisearchengine;
+package run.halo.meilisearch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +34,7 @@ public class ConfigListener implements Reconciler<Reconciler.Request> {
                 if (ExtensionUtil.isDeleted(configMap)) {
                     return Result.doNotRetry();
                 }
-                
+
                 var data = configMap.getData();
                 if (data.containsKey("basic")) {
                     var json = data.get("basic");
@@ -58,7 +58,7 @@ public class ConfigListener implements Reconciler<Reconciler.Request> {
         var configMap = new ConfigMap();
         var matcher = DefaultExtensionMatcher.builder(client, configMap.groupVersionKind())
             .fieldSelector(FieldSelector.of(
-                QueryFactory.equal("metadata.name", "meilisearch-search-engine-config")))
+                QueryFactory.equal("metadata.name", "meilisearch-engine-config")))
             .build();
         return builder
             .extension(configMap)
@@ -68,4 +68,4 @@ public class ConfigListener implements Reconciler<Reconciler.Request> {
             .onUpdateMatcher(matcher)
             .build();
     }
-} 
+}

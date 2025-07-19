@@ -7,4 +7,4 @@ spec:
   extensionPointName: search-engine
   displayName: "Meilisearch"
   description: "Meilisearch is a fast and hyper relevant search engine that provides instant search experiences."
-  icon: "/plugins/meilisearch/assets/logo.png"
+  icon: "/plugins/meilisearch/assets/logo.svg"

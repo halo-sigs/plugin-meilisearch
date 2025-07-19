@@ -3,5 +3,5 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-rootProject.name = 'plugin-meilisearch'
+rootProject.name = 'plugin-meilisearch-engine'
 include 'ui'

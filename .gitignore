@@ -78,3 +78,4 @@ application-local.properties
 /ui/build/
 /workplace/
 /src/main/resources/console/
+/demo/

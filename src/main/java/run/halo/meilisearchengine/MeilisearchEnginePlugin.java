@@ -1,4 +1,4 @@
-package run.halo.meilisearch;
+package run.halo.meilisearchengine;
 
 import org.springframework.stereotype.Component;
 import run.halo.app.plugin.BasePlugin;
@@ -13,19 +13,17 @@ import run.halo.app.plugin.PluginContext;
  * @since 1.0.0
  */
 @Component
-public class MeilisearchPlugin extends BasePlugin {
+public class MeilisearchEnginePlugin extends BasePlugin {
 
-    public MeilisearchPlugin(PluginContext pluginContext) {
+    public MeilisearchEnginePlugin(PluginContext pluginContext) {
         super(pluginContext);
     }
 
     @Override
     public void start() {
-        System.out.println("插件启动成功！");
     }
 
     @Override
     public void stop() {
-        System.out.println("插件停止！");
     }
 }

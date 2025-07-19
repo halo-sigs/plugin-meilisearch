@@ -1,4 +1,4 @@
-package run.halo.meilisearch;
+package run.halo.meilisearchengine;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -8,13 +8,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import run.halo.app.plugin.PluginContext;
 
 @ExtendWith(MockitoExtension.class)
-class MeilisearchPluginTest {
+class MeilisearchEnginePluginTest {
 
     @Mock
     PluginContext context;
 
     @InjectMocks
-    MeilisearchPlugin plugin;
+    MeilisearchEnginePlugin plugin;
 
     @Test
     void contextLoads() {

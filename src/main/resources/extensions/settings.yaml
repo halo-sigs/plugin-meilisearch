@@ -1,0 +1,22 @@
+apiVersion: v1alpha1
+kind: Setting
+metadata:
+  name: meilisearch-search-engine-setting
+spec:
+  forms:
+    - group: basic
+      label: Basic
+      formSchema:
+        - $formkit: text
+          name: host
+          required: true
+          label: "Meilisearch Host URL"
+          placeholder: "http://localhost:7700"
+        - $formkit: password
+          name: masterKey
+          required: true
+          label: "Meilisearch Master Key"
+        - $formkit: text
+          name: indexName
+          label: "Index Name"
+          value: "halo" 

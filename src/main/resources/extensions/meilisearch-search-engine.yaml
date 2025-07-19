@@ -1,0 +1,10 @@
+apiVersion: plugin.halo.run/v1alpha1
+kind: ExtensionDefinition
+metadata:
+  name: search-engine-meilisearch
+spec:
+  className: run.halo.meilisearchengine.MeilisearchSearchEngine
+  extensionPointName: search-engine
+  displayName: "Meilisearch"
+  description: "Meilisearch is a fast and hyper relevant search engine that provides instant search experiences."
+  icon: "/plugins/meilisearch-engine/assets/logo.png?version=1.0.0" 

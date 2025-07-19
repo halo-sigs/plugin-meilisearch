@@ -4,19 +4,21 @@ apiVersion: plugin.halo.run/v1alpha1
 kind: Plugin
 metadata:
   # The name defines how the plugin is invoked, A unique name
-  name: meilisearch
+  name: meilisearch-engine
 spec:
   enabled: true
   requires: ">=2.21.0"
   author:
     name: Halo
-    website: https://github.com/Halo
+    website: https://github.com/halo-dev
   logo: logo.png
-  homepage: https://github.com/Halo/meilisearch#readme
-  repo: https://github.com/Halo/meilisearch
-  issues: https://github.com/Halo/meilisearch/issues
-  displayName: "meilisearch"
-  description: "meilisearch - Halo 插件"
+  homepage: https://github.com/halo-dev/plugin-meilisearch-engine#readme
+  repo: https://github.com/halo-dev/plugin-meilisearch-engine
+  issues: https://github.com/halo-dev/plugin-meilisearch-engine/issues
+  displayName: "Meilisearch Search Engine"
+  description: "Integrate Meilisearch search engine into your Halo site."
+  configMapName: meilisearch-search-engine-config
+  settingName: meilisearch-search-engine-setting
   license:
     - name: "GPL-3.0"
-      url: "https://github.com/Halo/meilisearch/blob/main/LICENSE"
+      url: "https://github.com/halo-dev/plugin-meilisearch-engine/blob/main/LICENSE"

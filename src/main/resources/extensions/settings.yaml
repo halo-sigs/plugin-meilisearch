@@ -10,13 +10,15 @@ spec:
         - $formkit: text
           name: host
           required: true
-          label: "Meilisearch Host URL"
+          label: "Meilisearch 服务地址"
           placeholder: "http://localhost:7700"
+          help: "需要确保 Halo 服务或者 Halo 所在的容器可以访问到此地址"
         - $formkit: password
           name: masterKey
           required: true
-          label: "Meilisearch Master Key"
+          label: "Meilisearch 主密钥"
+          help: "Meilisearch 的 Master Key"
         - $formkit: text
           name: indexName
-          label: "Index Name"
+          label: "索引名称"
           value: "halo"

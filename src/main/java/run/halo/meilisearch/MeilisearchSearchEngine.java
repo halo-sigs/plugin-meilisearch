@@ -83,6 +83,25 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
         return available;
     }
 
+    private HaloDocument cleanDocument(HaloDocument document) {
+        if (document == null) {
+            return document;
+        }
+
+        try {
+            var originalJson = JsonUtils.mapper().writeValueAsString(document);
+            var cleanedDocument = JsonUtils.mapper().readValue(originalJson, HaloDocument.class);
+            
+            cleanedDocument.setDescription(HtmlUtils.stripHtmlAndTrim(document.getDescription()));
+            cleanedDocument.setContent(HtmlUtils.stripHtmlAndTrim(document.getContent()));
+            
+            return cleanedDocument;
+        } catch (Exception e) {
+            log.warn("Failed to clean document, using original", e);
+            return document;
+        }
+    }
+
     @Override
     public void addOrUpdate(Iterable<HaloDocument> docs) {
         if (!available) {
@@ -90,7 +109,9 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
             return;
         }
 
-        List<HaloDocument> documents = Streams.of(docs).toList();
+        List<HaloDocument> documents = Streams.of(docs)
+            .map(this::cleanDocument)
+            .toList();
 
         try {
             String documentsJson = JsonUtils.mapper().writeValueAsString(documents);

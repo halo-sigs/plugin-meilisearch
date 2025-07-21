@@ -38,16 +38,17 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 21
 }
 
-tasks.register('processUiResources', Copy) {
-    from project(':ui').layout.buildDirectory.dir('dist')
-    into layout.buildDirectory.dir('resources/main/console')
-    dependsOn project(':ui').tasks.named('assemble')
-    shouldRunAfter tasks.named('processResources')
-}
+// TODO: Add ui resources to provide a dashboard widget
+// tasks.register('processUiResources', Copy) {
+//     from project(':ui').layout.buildDirectory.dir('dist')
+//     into layout.buildDirectory.dir('resources/main/console')
+//     dependsOn project(':ui').tasks.named('assemble')
+//     shouldRunAfter tasks.named('processResources')
+// }
 
-tasks.named('classes') {
-    dependsOn tasks.named('processUiResources')
-}
+// tasks.named('classes') {
+//     dependsOn tasks.named('processUiResources')
+// }
 
 halo {
     version = '2.21'

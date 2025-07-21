@@ -5,7 +5,7 @@ metadata:
 spec:
   forms:
     - group: basic
-      label: Basic
+      label: 基本设置
       formSchema:
         - $formkit: text
           name: host

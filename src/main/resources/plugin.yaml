@@ -1,22 +1,21 @@
-# Refer https://docs.halo.run/developer-guide/plugin/basics/manifest
-
 apiVersion: plugin.halo.run/v1alpha1
 kind: Plugin
 metadata:
-  # The name defines how the plugin is invoked, A unique name
   name: meilisearch
 spec:
   enabled: true
   requires: ">=2.21.0"
   author:
     name: Halo
-    website: https://github.com/Halo
-  logo: logo.png
-  homepage: https://github.com/Halo/meilisearch#readme
-  repo: https://github.com/Halo/meilisearch
-  issues: https://github.com/Halo/meilisearch/issues
-  displayName: "meilisearch"
-  description: "meilisearch - Halo 插件"
+    website: https://github.com/halo-dev
+  logo: logo.svg
+  homepage: https://github.com/halo-sigs/plugin-meilisearch#readme
+  repo: https://github.com/halo-sigs/plugin-meilisearch
+  issues: https://github.com/halo-sigs/plugin-meilisearch/issues
+  displayName: "Meilisearch 搜索引擎"
+  description: "支持集成 Meilisearch 搜索引擎，提供更快，体验更好的搜索功能。"
+  configMapName: meilisearch-engine-config
+  settingName: meilisearch-engine-setting
   license:
     - name: "GPL-3.0"
-      url: "https://github.com/Halo/meilisearch/blob/main/LICENSE"
+      url: "https://github.com/halo-sigs/plugin-meilisearch/blob/main/LICENSE"

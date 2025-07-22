@@ -49,7 +49,7 @@
 
     ```yaml
       meilisearch:
-        image: docker.1panel.live/getmeili/meilisearch:v1.9
+        image: getmeili/meilisearch:v1.15
         restart: on-failure:3
         networks:
           - halo_network
@@ -111,7 +111,7 @@
             - POSTGRES_DB=halo
             - PGUSER=halo
         meilisearch:
-          image: docker.1panel.live/getmeili/meilisearch:v1.9
+          image: getmeili/meilisearch:v1.15
           restart: on-failure:3
           networks:
             - halo_network

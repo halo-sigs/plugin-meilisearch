@@ -2,6 +2,8 @@
 
 这是一个适用于 [Halo](https://github.com/halo-dev/halo) 的 Meilisearch 插件，支持将 Halo 的搜索功能与 Meilisearch 集成，提供更快速、更准确的搜索体验。
 
+![](./images/cover.png)
+
 ## 使用方式
 
 ### 搭建 Meilisearch 服务

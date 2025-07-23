@@ -7,18 +7,21 @@ spec:
     - group: basic
       label: 基本设置
       formSchema:
-        - $formkit: text
+        - $formkit: url
           name: host
           required: true
           label: "Meilisearch 服务地址"
           placeholder: "http://localhost:7700"
           help: "需要确保 Halo 服务或者 Halo 所在的容器可以访问到此地址"
+          validation: "required|url"
         - $formkit: password
           name: masterKey
           required: true
           label: "Meilisearch 主密钥"
           help: "Meilisearch 的 Master Key"
+          validation: "required"
         - $formkit: text
           name: indexName
           label: "索引名称"
           value: "halo"
+          validation: "required"

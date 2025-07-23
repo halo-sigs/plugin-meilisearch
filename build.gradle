@@ -38,19 +38,36 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 21
 }
 
-// TODO: Add ui resources to provide a dashboard widget
-// tasks.register('processUiResources', Copy) {
-//     from project(':ui').layout.buildDirectory.dir('dist')
-//     into layout.buildDirectory.dir('resources/main/console')
-//     dependsOn project(':ui').tasks.named('assemble')
-//     shouldRunAfter tasks.named('processResources')
-// }
+tasks.register('processUiResources', Copy) {
+    from project(':ui').layout.buildDirectory.dir('dist')
+    into layout.buildDirectory.dir('resources/main/console')
+    dependsOn project(':ui').tasks.named('assemble')
+    shouldRunAfter tasks.named('processResources')
+}
 
-// tasks.named('classes') {
-//     dependsOn tasks.named('processUiResources')
-// }
+tasks.named('classes') {
+    dependsOn tasks.named('processUiResources')
+}
 
 halo {
     version = '2.21'
 }
 
+haloPlugin {
+    openApi {
+        groupingRules {
+            extensionApis {
+                displayName = 'Extension API for Meilisearch Plugin'
+                pathsToMatch = [
+                    '/apis/console.api.meilisearch.halo.run/v1alpha1/*',
+                ]
+            }
+        }
+        groupedApiMappings = [
+            '/v3/api-docs/extensionApis': 'extensionApis.json'
+        ]
+        generator {
+            outputDir = file("${projectDir}/ui/src/api/generated")
+        }
+    }
+}

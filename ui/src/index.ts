@@ -1,29 +1,44 @@
+import { VLoading } from '@halo-dev/components'
 import { definePlugin } from '@halo-dev/console-shared'
-import HomeView from './views/HomeView.vue'
-import { IconPlug } from '@halo-dev/components'
-import { markRaw } from 'vue'
+import 'uno.css'
+import { defineAsyncComponent, markRaw } from 'vue'
+import SimpleIconsMeilisearch from '~icons/simple-icons/meilisearch?color=#FF5CAA'
 
 export default definePlugin({
-  components: {},
   routes: [
     {
-      parentName: 'Root',
+      parentName: 'ToolsRoot',
       route: {
-        path: '/example',
-        name: 'Example',
-        component: HomeView,
+        path: 'meilisearch-overview',
+        name: 'MeilisearchOverview',
+        redirect: '/plugins/meilisearch?tab=overview',
         meta: {
-          title: '示例页面',
+          title: 'Meilisearch 数据概览',
+          description: '查看 Meilisearch 搜索引擎的索引数据',
           searchable: true,
+          permissions: [],
           menu: {
-            name: '示例页面',
-            group: '示例分组',
-            icon: markRaw(IconPlug),
+            name: 'Meilisearch 数据概览',
+            icon: markRaw(SimpleIconsMeilisearch),
             priority: 0,
           },
         },
       },
     },
   ],
-  extensionPoints: {},
+  extensionPoints: {
+    'plugin:self:tabs:create': () => {
+      return [
+        {
+          id: 'overview',
+          label: '数据概览',
+          component: defineAsyncComponent({
+            loader: () => import('./components/OverviewTab.vue'),
+            loadingComponent: VLoading,
+          }),
+          permissions: ['*'],
+        },
+      ]
+    },
+  },
 })

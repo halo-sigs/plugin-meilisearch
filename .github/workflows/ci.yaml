@@ -16,4 +16,3 @@ jobs:
       pnpm-version: 10
       node-version: 22
       java-version: 21
-      skip-node-setup: true

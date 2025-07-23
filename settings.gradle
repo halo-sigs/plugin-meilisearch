@@ -4,5 +4,4 @@ pluginManagement {
     }
 }
 rootProject.name = 'plugin-meilisearch'
-// TODO: Add ui resources to provide a dashboard widget
-// include 'ui'
+include 'ui'

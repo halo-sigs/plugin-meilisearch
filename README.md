@@ -4,19 +4,23 @@
 
 ![](./images/cover.png)
 
+> 此插件作为 [Rainsheep/halo-plugin-meilisearch](https://github.com/Rainsheep/halo-plugin-meilisearch/) 的代替，原插件已经[不再维护](https://github.com/Rainsheep/halo-plugin-meilisearch/issues/12#issuecomment-2969309786)。
+
 ## 使用方式
 
 ### 搭建 Meilisearch 服务
 
-获取一个服务通常有两种方式，你可以选择自行在云服务器上托管，或者使用 Meilisearch 官方提供的云服务。
+部署 Meilisearch 服务通常有两种方式：你可以选择自行在服务器上托管，或者使用 Meilisearch 官方提供的云服务。
 
 #### 云服务
 
-访问 <https://www.meilisearch.com/cloud> 注册账号，根据引导创建一个项目即可。最后可以在控制台获取实例地址和 Master Key。
+访问 <https://www.meilisearch.com/cloud> 注册账号，根据引导创建项目。创建完成后，可以在控制台获取实例地址和 Master Key。
+
+> 需要特别注意 Meilisearch 云服务的计费方式。
 
 #### 自托管
 
-这里介绍两种部署方式：
+下面介绍两种常见的部署方式：
 
 1. 使用 Docker Compose 独立编排部署：
 
@@ -45,7 +49,7 @@
 
    > 结合 [使用 Docker Compose 部署 Halo](https://docs.halo.run/getting-started/install/docker-compose) 的示例，将 Meilisearch 服务添加到 `docker-compose.yml` 文件中。
 
-   > 通过这种方式部署之后，插件设置中的 **Meilisearch 服务地址** 应该是 `http://meilisearch:7700`
+   > 通过这种方式部署之后，插件设置中的 **Meilisearch 服务地址** 应该是 `http://meilisearch:7700`（即服务在同一 Compose 网络下可通过服务名访问）
 
     ```yaml
       meilisearch:

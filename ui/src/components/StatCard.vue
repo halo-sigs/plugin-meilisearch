@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import prettyBytes from 'pretty-bytes'
 import type { Component, Raw } from 'vue'
 
 defineProps<{
   title: string
-  value?: number | bigint
+  value?: string
   icon: Raw<Component>
   iconColor: string
   iconBgColor: string
@@ -17,7 +16,7 @@ defineProps<{
       <p class=":uno: mb-1 text-sm text-gray-600">{{ title }}</p>
       <slot name="value">
         <p class=":uno: text-xl text-gray-900 font-bold">
-          {{ prettyBytes(value || 0) }}
+          {{ value }}
         </p>
       </slot>
     </div>

@@ -3,6 +3,7 @@ import { meilisearchConsoleApiClient } from '@/api'
 import { VButton, VEmpty, VLoading, VSpace, VStatusDot } from '@halo-dev/components'
 import { useQuery } from '@tanstack/vue-query'
 import { AxiosError } from 'axios'
+import prettyBytes from 'pretty-bytes'
 import { computed, markRaw } from 'vue'
 import MingcuteChartBarLine from '~icons/mingcute/chart-bar-line'
 import MingcuteChartPie2Line from '~icons/mingcute/chart-pie-2-line'
@@ -102,7 +103,7 @@ const fieldDistributionItems = computed(() => {
       <div class=":uno: grid grid-cols-1 gap-4 lg:grid-cols-4 md:grid-cols-2">
         <StatCard
           title="文档数量"
-          :value="stats.numberOfDocuments || 0"
+          :value="formatNumber(stats.numberOfDocuments || 0)"
           :icon="markRaw(MingcuteDocument2Line)"
           iconColor="text-blue-600"
           iconBgColor="bg-blue-100"
@@ -110,7 +111,7 @@ const fieldDistributionItems = computed(() => {
 
         <StatCard
           title="数据库大小"
-          :value="stats.rawDocumentDbSize || 0"
+          :value="prettyBytes(stats.rawDocumentDbSize || 0)"
           :icon="markRaw(MingcuteServer2Line)"
           iconColor="text-green-600"
           iconBgColor="bg-green-100"
@@ -118,7 +119,7 @@ const fieldDistributionItems = computed(() => {
 
         <StatCard
           title="平均文档大小"
-          :value="stats.avgDocumentSize || 0"
+          :value="prettyBytes(stats.avgDocumentSize || 0)"
           :icon="markRaw(MingcuteChartPie2Line)"
           iconColor="text-purple-600"
           iconBgColor="bg-purple-100"

@@ -150,8 +150,7 @@
 
     ![](./images/extension-point-setting.png)
 
-## 常见问题
+## 注意
 
-1. 正确配置之后无法在前台搜索到内容
-
-   > 可以尝试在仪表盘页面的快捷访问中刷新搜索引擎。
+- 如果配置完 Meilisearch 插件之后无法搜索，可以尝试重建一次索引。
+- 安装 Meilisearch 插件之后仍然需要[搜索组件](https://www.halo.run/store/apps/app-DlacW)插件，Meilisearch 插件仅仅是提供服务，不会提供 UI。

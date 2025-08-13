@@ -16,7 +16,7 @@ export default definePlugin({
           title: 'Meilisearch 数据概览',
           description: '查看 Meilisearch 搜索引擎的索引数据',
           searchable: true,
-          permissions: [],
+          permissions: ['*'],
           menu: {
             name: 'Meilisearch 数据概览',
             icon: markRaw(SimpleIconsMeilisearch),

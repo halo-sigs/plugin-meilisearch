@@ -1,5 +1,5 @@
 import { VLoading } from '@halo-dev/components'
-import { definePlugin } from '@halo-dev/console-shared'
+import { definePlugin } from '@halo-dev/ui-shared'
 import 'uno.css'
 import { defineAsyncComponent, markRaw } from 'vue'
 import SimpleIconsMeilisearch from '~icons/simple-icons/meilisearch?color=#FF5CAA'

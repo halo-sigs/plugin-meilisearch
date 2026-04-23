@@ -33,7 +33,8 @@
   },
   "devDependencies": {
     "@halo-dev/ui-plugin-bundler-kit": "^2.22.0",
-    "@iconify/json": "^2.2.421",
+    "@iconify-json/mingcute": "^1.2.7",
+    "@iconify-json/simple-icons": "^1.2.79",
     "@rsbuild/core": "^1.6.15",
     "@rsbuild/plugin-sass": "^1.4.0",
     "@tsconfig/node20": "^20.1.8",

@@ -6,11 +6,13 @@ import com.meilisearch.sdk.Config;
 import com.meilisearch.sdk.Index;
 import com.meilisearch.sdk.SearchRequest;
 import com.meilisearch.sdk.exceptions.MeilisearchException;
+import com.meilisearch.sdk.model.SearchResult;
 import com.meilisearch.sdk.model.Searchable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.stream.Streams;
 import org.springframework.beans.factory.DisposableBean;
@@ -160,30 +162,80 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
             return new run.halo.app.search.SearchResult();
         }
 
-        StringJoiner filter = new StringJoiner(" AND ");
-        filter.add("recycled = false");
-        filter.add("exposed = true");
-        filter.add("published = true");
+        var filter = new StringJoiner(" AND ");
 
-        SearchRequest searchRequest = SearchRequest.builder()
+        var filterRecycled = searchOption.getFilterRecycled();
+        if (filterRecycled != null) {
+            filter.add("recycled = " + filterRecycled);
+        }
+
+        var filterExposed = searchOption.getFilterExposed();
+        if (filterExposed != null) {
+            filter.add("exposed = " + filterExposed);
+        }
+
+        var filterPublished = searchOption.getFilterPublished();
+        if (filterPublished != null) {
+            filter.add("published = " + filterPublished);
+        }
+
+        var includeTypes = searchOption.getIncludeTypes();
+        if (includeTypes != null && !includeTypes.isEmpty()) {
+            var typeFilter = includeTypes.stream()
+                .distinct()
+                .map(type -> "type = '" + type + "'")
+                .collect(Collectors.joining(" OR "));
+            filter.add("(" + typeFilter + ")");
+        }
+
+        var includeOwnerNames = searchOption.getIncludeOwnerNames();
+        if (includeOwnerNames != null && !includeOwnerNames.isEmpty()) {
+            var ownerFilter = includeOwnerNames.stream()
+                .distinct()
+                .map(owner -> "ownerName = '" + owner + "'")
+                .collect(Collectors.joining(" OR "));
+            filter.add("(" + ownerFilter + ")");
+        }
+
+        var includeTagNames = searchOption.getIncludeTagNames();
+        if (includeTagNames != null && !includeTagNames.isEmpty()) {
+            var tagFilter = includeTagNames.stream()
+                .distinct()
+                .map(tag -> "tags = '" + tag + "'")
+                .collect(Collectors.joining(" AND "));
+            filter.add("(" + tagFilter + ")");
+        }
+
+        var includeCategoryNames = searchOption.getIncludeCategoryNames();
+        if (includeCategoryNames != null && !includeCategoryNames.isEmpty()) {
+            var categoryFilter = includeCategoryNames.stream()
+                .distinct()
+                .map(category -> "categories = '" + category + "'")
+                .collect(Collectors.joining(" AND "));
+            filter.add("(" + categoryFilter + ")");
+        }
+
+        var searchRequestBuilder = SearchRequest.builder()
             .q(searchOption.getKeyword())
             .limit(searchOption.getLimit())
-            .filter(new String[]{filter.toString()})
             .attributesToSearchOn(SEARCH_ATTRIBUTES)
             .attributesToHighlight(HIGHLIGHT_ATTRIBUTES)
             .highlightPreTag(searchOption.getHighlightPreTag())
             .highlightPostTag(searchOption.getHighlightPostTag())
             .attributesToCrop(CROP_ATTRIBUTES)
             .cropLength(200)
-            .cropMarker("")
-            .build();
+            .cropMarker("");
+
+        if (filter.length() > 0) {
+            searchRequestBuilder.filter(new String[]{filter.toString()});
+        }
 
         try {
-            Searchable meilisearchResult = this.index.search(searchRequest);
+            Searchable meilisearchResult = this.index.search(searchRequestBuilder.build());
 
             var result = new run.halo.app.search.SearchResult();
             result.setLimit(searchOption.getLimit());
-            result.setTotal((long) meilisearchResult.getHits().size());
+            result.setTotal((long) ((SearchResult) meilisearchResult).getEstimatedTotalHits());
             result.setKeyword(searchOption.getKeyword());
             result.setProcessingTimeMillis(meilisearchResult.getProcessingTimeMs());
             result.setHits(convertHits(meilisearchResult.getHits()));

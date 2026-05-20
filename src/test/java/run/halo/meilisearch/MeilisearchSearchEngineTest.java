@@ -20,7 +20,10 @@ import com.meilisearch.sdk.Index;
 import com.meilisearch.sdk.SearchRequest;
 import com.meilisearch.sdk.exceptions.MeilisearchException;
 import com.meilisearch.sdk.model.SearchResult;
+import com.meilisearch.sdk.model.Settings;
+import com.meilisearch.sdk.model.Task;
 import com.meilisearch.sdk.model.TaskInfo;
+import com.meilisearch.sdk.model.TaskStatus;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,6 +40,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.ExtensionClient;
+import run.halo.app.infra.utils.JsonUtils;
 import run.halo.app.plugin.event.PluginStartedEvent;
 import run.halo.app.search.HaloDocument;
 import run.halo.app.search.SearchOption;
@@ -95,6 +99,12 @@ class MeilisearchSearchEngineTest {
     TaskInfo retryTaskInfo;
 
     @Mock
+    Task task;
+
+    @Mock
+    Task retryTask;
+
+    @Mock
     TaskInfo deleteIndexTaskInfo;
 
     @Mock
@@ -102,6 +112,24 @@ class MeilisearchSearchEngineTest {
 
     @Mock
     SearchResult searchResult;
+
+    @Mock
+    TaskInfo documentTaskInfo;
+
+    @Mock
+    Task documentTask;
+
+    @Mock
+    TaskInfo deleteTaskInfo;
+
+    @Mock
+    Task deleteTask;
+
+    @Mock
+    TaskInfo deleteAllTaskInfo;
+
+    @Mock
+    Task deleteAllTask;
 
     @Test
     void configUpdatedEventShouldInitializeIndexSettingsBeforeBecomingAvailable()
@@ -113,20 +141,17 @@ class MeilisearchSearchEngineTest {
         engine.onApplicationEvent(new ConfigUpdatedEvent(this, properties()));
 
         assertThat(engine.available()).isTrue();
-        var searchableAttributesCaptor = ArgumentCaptor.forClass(String[].class);
-        var filterableAttributesCaptor = ArgumentCaptor.forClass(String[].class);
-        var displayedAttributesCaptor = ArgumentCaptor.forClass(String[].class);
-        verify(index).updateSearchableAttributesSettings(searchableAttributesCaptor.capture());
-        verify(index).updateFilterableAttributesSettings(filterableAttributesCaptor.capture());
-        verify(index).updateDisplayedAttributesSettings(displayedAttributesCaptor.capture());
-        assertThat(searchableAttributesCaptor.getValue())
+        var settingsCaptor = ArgumentCaptor.forClass(Settings.class);
+        verify(index).updateSettings(settingsCaptor.capture());
+        assertThat(settingsCaptor.getValue().getSearchableAttributes())
             .containsExactly("title", "description", "content");
-        assertThat(filterableAttributesCaptor.getValue())
+        assertThat(settingsCaptor.getValue().getFilterableAttributes())
             .containsExactly("published", "recycled", "exposed", "type", "ownerName",
                 "categories", "tags");
-        assertThat(displayedAttributesCaptor.getValue())
+        assertThat(settingsCaptor.getValue().getDisplayedAttributes())
             .contains("ownerName", "content", "permalink");
-        verify(index, times(3)).waitForTask(123, 60_000, 100);
+        verify(index).waitForTask(123, 60_000, 100);
+        verify(index).getTask(123);
         verify(retryExecutor, never()).schedule(any(Runnable.class), anyLong(),
             any(TimeUnit.class));
         verify(eventPublisher, never()).publishEvent(isA(HaloDocumentRebuildRequestEvent.class));
@@ -172,7 +197,7 @@ class MeilisearchSearchEngineTest {
 
         assertThat(engine.available()).isTrue();
         verify(clientFactory, times(1)).create(any(Config.class));
-        verify(index, times(1)).updateSearchableAttributesSettings(any(String[].class));
+        verify(index, times(1)).updateSettings(any(Settings.class));
     }
 
     @Test
@@ -181,7 +206,7 @@ class MeilisearchSearchEngineTest {
             .thenReturn(meilisearchClient, retryMeilisearchClient);
         when(meilisearchClient.index("halo")).thenReturn(index);
         when(meilisearchClient.getIndex("halo")).thenReturn(index);
-        when(index.updateSearchableAttributesSettings(any(String[].class)))
+        when(index.updateSettings(any(Settings.class)))
             .thenThrow(new RuntimeException("not ready"));
         var retryTaskCaptor = ArgumentCaptor.forClass(Runnable.class);
         doReturn(retryFuture)
@@ -199,7 +224,7 @@ class MeilisearchSearchEngineTest {
         retryTaskCaptor.getValue().run();
 
         assertThat(engine.available()).isTrue();
-        verify(retryIndex, times(3)).waitForTask(456, 60_000, 100);
+        verify(retryIndex).waitForTask(456, 60_000, 100);
         verify(eventPublisher).publishEvent(isA(HaloDocumentRebuildRequestEvent.class));
     }
 
@@ -209,7 +234,7 @@ class MeilisearchSearchEngineTest {
             .thenReturn(meilisearchClient, retryMeilisearchClient);
         when(meilisearchClient.index("halo")).thenReturn(index);
         when(meilisearchClient.getIndex("halo")).thenReturn(index);
-        when(index.updateSearchableAttributesSettings(any(String[].class)))
+        when(index.updateSettings(any(Settings.class)))
             .thenThrow(new RuntimeException("not ready"));
         var retryTaskCaptor = ArgumentCaptor.forClass(Runnable.class);
         doReturn(retryFuture)
@@ -237,7 +262,7 @@ class MeilisearchSearchEngineTest {
         when(clientFactory.create(any(Config.class))).thenReturn(meilisearchClient);
         when(meilisearchClient.index("halo")).thenReturn(index);
         when(meilisearchClient.getIndex("halo")).thenReturn(index);
-        when(index.updateSearchableAttributesSettings(any(String[].class)))
+        when(index.updateSettings(any(Settings.class)))
             .thenThrow(new RuntimeException("not ready"));
         var retryTaskCaptor = ArgumentCaptor.forClass(Runnable.class);
         doReturn(retryFuture)
@@ -262,7 +287,7 @@ class MeilisearchSearchEngineTest {
         when(clientFactory.create(any(Config.class))).thenReturn(meilisearchClient);
         when(meilisearchClient.index("halo")).thenReturn(index);
         when(meilisearchClient.getIndex("halo")).thenReturn(index);
-        when(index.updateSearchableAttributesSettings(any(String[].class)))
+        when(index.updateSettings(any(Settings.class)))
             .thenThrow(new RuntimeException("not ready"));
         doReturn(retryFuture)
             .when(retryExecutor)
@@ -403,9 +428,29 @@ class MeilisearchSearchEngineTest {
 
         assertThat(result.getTotal()).isEqualTo(1);
         assertThat(result.getHits()).hasSize(1);
-        verify(index, times(2)).updateSearchableAttributesSettings(any(String[].class));
+        verify(index, times(2)).updateSettings(any(Settings.class));
         verify(index, times(2)).search(any(SearchRequest.class));
         assertThat(engine.available()).isTrue();
+    }
+
+    @Test
+    void initializationShouldRetryWhenSettingsTaskFails() throws Exception {
+        when(clientFactory.create(any(Config.class))).thenReturn(meilisearchClient);
+        when(meilisearchClient.index("halo")).thenReturn(index);
+        when(meilisearchClient.getIndex("halo")).thenReturn(index);
+        when(index.updateSettings(any(Settings.class))).thenReturn(taskInfo);
+        when(taskInfo.getTaskUid()).thenReturn(123);
+        when(index.getTask(123)).thenReturn(task);
+        when(task.getStatus()).thenReturn(TaskStatus.FAILED);
+        doReturn(retryFuture)
+            .when(retryExecutor)
+            .schedule(any(Runnable.class), eq(5L), eq(TimeUnit.SECONDS));
+        var engine = newEngine();
+
+        engine.onApplicationEvent(new ConfigUpdatedEvent(this, properties()));
+
+        assertThat(engine.available()).isFalse();
+        verify(retryExecutor).schedule(any(Runnable.class), eq(5L), eq(TimeUnit.SECONDS));
     }
 
     @Test
@@ -454,6 +499,7 @@ class MeilisearchSearchEngineTest {
             .containsExactly("recycled = false AND exposed = true AND published = true"
                 + " AND (type = 'post.content.halo.run') AND (ownerName = 'admin')"
                 + " AND (tags = 'tag-a') AND (categories = 'category-a' AND categories = 'category-b')");
+        assertThat(requestCaptor.getValue().getAttributesToSearchOn()).isNull();
     }
 
     @Test
@@ -487,13 +533,21 @@ class MeilisearchSearchEngineTest {
         var document = document();
         document.setDescription("<p>Hello <strong>Halo</strong></p>");
         document.setContent("<article>Search <em>content</em></article>");
+        givenTaskSucceeded(index, documentTaskInfo, documentTask, 789);
+        when(index.addDocuments(anyString(), eq("meilisearchId"))).thenReturn(documentTaskInfo);
 
         engine.addOrUpdate(List.of(document));
 
         var documentsCaptor = ArgumentCaptor.forClass(String.class);
-        verify(index).addDocuments(documentsCaptor.capture(), eq("id"));
+        verify(index).addDocuments(documentsCaptor.capture(), eq("meilisearchId"));
         assertThat(documentsCaptor.getValue()).contains("Hello Halo", "Search content");
         assertThat(documentsCaptor.getValue()).doesNotContain("<p>", "<strong>", "<article>", "<em>");
+        var indexedDocument = JsonUtils.mapper().readTree(documentsCaptor.getValue()).get(0);
+        assertThat(indexedDocument.get("id").asText()).isEqualTo("post.content.halo.run-post-name");
+        assertThat(indexedDocument.get("meilisearchId").asText())
+            .matches("[a-f0-9]{64}")
+            .doesNotContain(".");
+        verify(index).waitForTask(789, 60_000, 100);
     }
 
     @Test
@@ -520,13 +574,15 @@ class MeilisearchSearchEngineTest {
         documentsWithNull.add(null);
         engine.addOrUpdate(documentsWithNull);
 
-        verify(index, never()).addDocuments(anyString(), eq("id"));
+        verify(index, never()).addDocuments(anyString(), eq("meilisearchId"));
     }
 
     @Test
     void deleteDocumentShouldUseHaloDocumentIds() throws Exception {
         givenSuccessfulInitialization(meilisearchClient, index, taskInfo, "halo", 123);
         when(clientFactory.create(any(Config.class))).thenReturn(meilisearchClient);
+        givenTaskSucceeded(index, deleteTaskInfo, deleteTask, 790);
+        when(index.deleteDocuments(any())).thenReturn(deleteTaskInfo);
         var engine = newEngine();
         engine.onApplicationEvent(new ConfigUpdatedEvent(this, properties()));
 
@@ -535,10 +591,14 @@ class MeilisearchSearchEngineTest {
             "singlepage.content.halo.run-page-name"
         ));
 
-        verify(index).deleteDocuments(List.of(
-            "post.content.halo.run-post-name",
-            "singlepage.content.halo.run-page-name"
-        ));
+        var documentIdsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(index).deleteDocuments(documentIdsCaptor.capture());
+        assertThat(documentIdsCaptor.getValue())
+            .hasSize(2)
+            .allSatisfy(id -> assertThat((String) id)
+                .matches("[a-f0-9]{64}")
+                .doesNotContain("."));
+        verify(index).waitForTask(790, 60_000, 100);
     }
 
     @Test
@@ -562,6 +622,8 @@ class MeilisearchSearchEngineTest {
     void deleteDocumentShouldDeleteAllWhenDocumentIdsAreMissing() throws Exception {
         givenSuccessfulInitialization(meilisearchClient, index, taskInfo, "halo", 123);
         when(clientFactory.create(any(Config.class))).thenReturn(meilisearchClient);
+        givenTaskSucceeded(index, deleteAllTaskInfo, deleteAllTask, 791);
+        when(index.deleteAllDocuments()).thenReturn(deleteAllTaskInfo);
         var engine = newEngine();
         engine.onApplicationEvent(new ConfigUpdatedEvent(this, properties()));
 
@@ -569,6 +631,7 @@ class MeilisearchSearchEngineTest {
 
         verify(index).deleteAllDocuments();
         verify(index, never()).deleteDocuments(any());
+        verify(index).waitForTask(791, 60_000, 100);
     }
 
     @Test
@@ -592,7 +655,7 @@ class MeilisearchSearchEngineTest {
         when(meilisearchClient.index("halo")).thenReturn(index);
         when(meilisearchClient.getIndex("halo"))
             .thenThrow(new MeilisearchException("index not found"));
-        when(meilisearchClient.createIndex("halo", "id")).thenReturn(createIndexTaskInfo);
+        when(meilisearchClient.createIndex("halo", "meilisearchId")).thenReturn(createIndexTaskInfo);
         when(createIndexTaskInfo.getTaskUid()).thenReturn(321);
         givenSuccessfulSettingsInitialization(index, taskInfo, 123);
         var engine = newEngine();
@@ -613,7 +676,7 @@ class MeilisearchSearchEngineTest {
         when(legacyIndex.getPrimaryKey()).thenReturn("metadataName");
         when(meilisearchClient.deleteIndex("halo")).thenReturn(deleteIndexTaskInfo);
         when(deleteIndexTaskInfo.getTaskUid()).thenReturn(111);
-        when(meilisearchClient.createIndex("halo", "id")).thenReturn(createIndexTaskInfo);
+        when(meilisearchClient.createIndex("halo", "meilisearchId")).thenReturn(createIndexTaskInfo);
         when(createIndexTaskInfo.getTaskUid()).thenReturn(222);
         givenSuccessfulSettingsInitialization(recreatedIndex, taskInfo, 333);
         var engine = newEngine();
@@ -623,7 +686,7 @@ class MeilisearchSearchEngineTest {
         assertThat(engine.available()).isTrue();
         verify(meilisearchClient).waitForTask(111);
         verify(meilisearchClient).waitForTask(222);
-        verify(recreatedIndex, times(3)).waitForTask(333, 60_000, 100);
+        verify(recreatedIndex).waitForTask(333, 60_000, 100);
         verify(eventPublisher, never()).publishEvent(isA(HaloDocumentRebuildRequestEvent.class));
 
         engine.onApplicationEvent(new PluginStartedEvent(this));
@@ -648,10 +711,16 @@ class MeilisearchSearchEngineTest {
 
     private void givenSuccessfulSettingsUpdate(Index index, TaskInfo taskInfo, int taskUid)
         throws Exception {
-        when(index.updateSearchableAttributesSettings(any(String[].class))).thenReturn(taskInfo);
-        when(index.updateFilterableAttributesSettings(any(String[].class))).thenReturn(taskInfo);
-        when(index.updateDisplayedAttributesSettings(any(String[].class))).thenReturn(taskInfo);
+        var completedTask = taskInfo == this.taskInfo ? this.task : this.retryTask;
+        when(index.updateSettings(any(Settings.class))).thenReturn(taskInfo);
+        givenTaskSucceeded(index, taskInfo, completedTask, taskUid);
+    }
+
+    private void givenTaskSucceeded(Index index, TaskInfo taskInfo, Task task, int taskUid)
+        throws Exception {
         when(taskInfo.getTaskUid()).thenReturn(taskUid);
+        when(index.getTask(taskUid)).thenReturn(task);
+        when(task.getStatus()).thenReturn(TaskStatus.SUCCEEDED);
     }
 
     private MeilisearchSearchEngine newEngine() {

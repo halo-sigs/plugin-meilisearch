@@ -1,6 +1,7 @@
 package run.halo.meilisearch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.meilisearch.sdk.Client;
 import com.meilisearch.sdk.Config;
 import com.meilisearch.sdk.Index;
@@ -8,7 +9,15 @@ import com.meilisearch.sdk.SearchRequest;
 import com.meilisearch.sdk.exceptions.MeilisearchException;
 import com.meilisearch.sdk.model.SearchResult;
 import com.meilisearch.sdk.model.Searchable;
+import com.meilisearch.sdk.model.Settings;
+import com.meilisearch.sdk.model.Task;
+import com.meilisearch.sdk.model.TaskInfo;
+import com.meilisearch.sdk.model.TaskStatus;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +62,7 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
         "published", "recycled", "exposed", "ownerName", "creationTimestamp",
         "updateTimestamp", "permalink", "type", "content"
     };
-    private static final String DOCUMENT_PRIMARY_KEY = "id";
+    private static final String DOCUMENT_PRIMARY_KEY = "meilisearchId";
     private static final int TASK_WAIT_TIMEOUT_MS = 60_000;
     private static final int TASK_WAIT_INTERVAL_MS = 100;
     private static final int RETRY_DELAY_SECONDS = 5;
@@ -253,14 +262,39 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
     }
 
     private void updateIndexSettings() throws MeilisearchException {
-        var task = this.index.updateSearchableAttributesSettings(SEARCH_ATTRIBUTES);
-        this.index.waitForTask(task.getTaskUid(), TASK_WAIT_TIMEOUT_MS, TASK_WAIT_INTERVAL_MS);
+        var settings = new Settings()
+            .setSearchableAttributes(SEARCH_ATTRIBUTES)
+            .setFilterableAttributes(FILTERABLE_ATTRIBUTES)
+            .setDisplayedAttributes(DISPLAYED_ATTRIBUTES);
+        waitForTaskSucceeded(this.index.updateSettings(settings), "update index settings");
+    }
 
-        task = this.index.updateFilterableAttributesSettings(FILTERABLE_ATTRIBUTES);
-        this.index.waitForTask(task.getTaskUid(), TASK_WAIT_TIMEOUT_MS, TASK_WAIT_INTERVAL_MS);
+    private void waitForTaskSucceeded(TaskInfo taskInfo, String operation)
+        throws MeilisearchException {
+        if (taskInfo == null) {
+            throw new MeilisearchException("Meilisearch task was not created while trying to "
+                + operation);
+        }
+        var taskUid = taskInfo.getTaskUid();
+        this.index.waitForTask(taskUid, TASK_WAIT_TIMEOUT_MS, TASK_WAIT_INTERVAL_MS);
 
-        task = this.index.updateDisplayedAttributesSettings(DISPLAYED_ATTRIBUTES);
-        this.index.waitForTask(task.getTaskUid(), TASK_WAIT_TIMEOUT_MS, TASK_WAIT_INTERVAL_MS);
+        var task = this.index.getTask(taskUid);
+        if (task == null || task.getStatus() != TaskStatus.SUCCEEDED) {
+            throw new MeilisearchException("Meilisearch task failed while trying to "
+                + operation + ": " + describeTask(task));
+        }
+    }
+
+    private String describeTask(Task task) {
+        if (task == null) {
+            return "task not found";
+        }
+        var message = "status=" + task.getStatus();
+        var error = task.getError();
+        if (error != null && error.getMessage() != null) {
+            message += ", error=" + error.getMessage();
+        }
+        return message;
     }
 
     private void validateIndexSettings() throws MeilisearchException {
@@ -369,9 +403,10 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
             return;
         }
 
-        List<HaloDocument> documents = Streams.of(docs)
+        List<ObjectNode> documents = Streams.of(docs)
             .filter(Objects::nonNull)
             .map(this::cleanDocument)
+            .map(this::toMeilisearchDocument)
             .toList();
         if (documents.isEmpty()) {
             return;
@@ -379,9 +414,28 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
 
         try {
             String documentsJson = JsonUtils.mapper().writeValueAsString(documents);
-            this.index.addDocuments(documentsJson, DOCUMENT_PRIMARY_KEY);
+            waitForTaskSucceeded(
+                this.index.addDocuments(documentsJson, DOCUMENT_PRIMARY_KEY),
+                "add or update documents"
+            );
         } catch (MeilisearchException | JsonProcessingException e) {
             log.error("Failed to add/update documents", e);
+        }
+    }
+
+    private ObjectNode toMeilisearchDocument(HaloDocument document) {
+        ObjectNode documentNode = JsonUtils.mapper().valueToTree(document);
+        documentNode.put(DOCUMENT_PRIMARY_KEY, toMeilisearchDocumentId(document.getId()));
+        return documentNode;
+    }
+
+    private String toMeilisearchDocumentId(String haloDocumentId) {
+        try {
+            var digest = MessageDigest.getInstance("SHA-256");
+            var hash = digest.digest(haloDocumentId.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 message digest is not available", e);
         }
     }
 
@@ -398,13 +452,14 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
 
         var documentIds = Streams.of(docIds)
             .filter(id -> id != null && !id.isBlank())
+            .map(this::toMeilisearchDocumentId)
             .toList();
         if (documentIds.isEmpty()) {
             return;
         }
 
         try {
-            this.index.deleteDocuments(documentIds);
+            waitForTaskSucceeded(this.index.deleteDocuments(documentIds), "delete documents");
         } catch (MeilisearchException e) {
             log.error("Failed to delete documents", e);
         }
@@ -418,7 +473,7 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
         }
 
         try {
-            this.index.deleteAllDocuments();
+            waitForTaskSucceeded(this.index.deleteAllDocuments(), "delete all documents");
         } catch (MeilisearchException e) {
             log.error("Failed to delete all documents", e);
         }
@@ -482,7 +537,6 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
         var searchRequestBuilder = SearchRequest.builder()
             .q(searchOption.getKeyword())
             .limit(searchOption.getLimit())
-            .attributesToSearchOn(SEARCH_ATTRIBUTES)
             .attributesToHighlight(HIGHLIGHT_ATTRIBUTES)
             .highlightPreTag(searchOption.getHighlightPreTag())
             .highlightPostTag(searchOption.getHighlightPostTag())

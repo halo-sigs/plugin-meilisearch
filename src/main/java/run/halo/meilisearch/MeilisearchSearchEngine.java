@@ -285,6 +285,22 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
         }
     }
 
+    private void waitForClientTaskSucceeded(TaskInfo taskInfo, String operation)
+        throws MeilisearchException {
+        if (taskInfo == null) {
+            throw new MeilisearchException("Meilisearch task was not created while trying to "
+                + operation);
+        }
+        var taskUid = taskInfo.getTaskUid();
+        this.meilisearchClient.waitForTask(taskUid);
+
+        var task = this.meilisearchClient.getTask(taskUid);
+        if (task == null || task.getStatus() != TaskStatus.SUCCEEDED) {
+            throw new MeilisearchException("Meilisearch task failed while trying to "
+                + operation + ": " + describeTask(task));
+        }
+    }
+
     private String describeTask(Task task) {
         if (task == null) {
             return "task not found";
@@ -348,7 +364,7 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
         log.warn("Recreating Meilisearch index {} because primary key is {}, expected {}",
             indexName, primaryKey, DOCUMENT_PRIMARY_KEY);
         var deleteTask = this.meilisearchClient.deleteIndex(indexName);
-        this.meilisearchClient.waitForTask(deleteTask.getTaskUid());
+        waitForClientTaskSucceeded(deleteTask, "delete legacy index");
         createIndexWithPrimaryKey(indexName);
     }
 
@@ -363,7 +379,7 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
 
     private void createIndexWithPrimaryKey(String indexName) throws MeilisearchException {
         var createTask = this.meilisearchClient.createIndex(indexName, DOCUMENT_PRIMARY_KEY);
-        this.meilisearchClient.waitForTask(createTask.getTaskUid());
+        waitForClientTaskSucceeded(createTask, "create index with primary key");
         this.index = this.meilisearchClient.index(indexName);
         this.rebuildOnNextSuccessfulInitialization = true;
     }

@@ -111,6 +111,12 @@ class MeilisearchSearchEngineTest {
     TaskInfo createIndexTaskInfo;
 
     @Mock
+    Task deleteIndexTask;
+
+    @Mock
+    Task createIndexTask;
+
+    @Mock
     SearchResult searchResult;
 
     @Mock
@@ -656,7 +662,7 @@ class MeilisearchSearchEngineTest {
         when(meilisearchClient.getIndex("halo"))
             .thenThrow(new MeilisearchException("index not found"));
         when(meilisearchClient.createIndex("halo", "meilisearchId")).thenReturn(createIndexTaskInfo);
-        when(createIndexTaskInfo.getTaskUid()).thenReturn(321);
+        givenClientTaskSucceeded(createIndexTaskInfo, createIndexTask, 321);
         givenSuccessfulSettingsInitialization(index, taskInfo, 123);
         var engine = newEngine();
         engine.onApplicationEvent(new PluginStartedEvent(this));
@@ -665,6 +671,7 @@ class MeilisearchSearchEngineTest {
 
         assertThat(engine.available()).isTrue();
         verify(meilisearchClient).waitForTask(321);
+        verify(meilisearchClient).getTask(321);
         verify(eventPublisher).publishEvent(isA(HaloDocumentRebuildRequestEvent.class));
     }
 
@@ -675,9 +682,9 @@ class MeilisearchSearchEngineTest {
         when(meilisearchClient.getIndex("halo")).thenReturn(legacyIndex);
         when(legacyIndex.getPrimaryKey()).thenReturn("metadataName");
         when(meilisearchClient.deleteIndex("halo")).thenReturn(deleteIndexTaskInfo);
-        when(deleteIndexTaskInfo.getTaskUid()).thenReturn(111);
+        givenClientTaskSucceeded(deleteIndexTaskInfo, deleteIndexTask, 111);
         when(meilisearchClient.createIndex("halo", "meilisearchId")).thenReturn(createIndexTaskInfo);
-        when(createIndexTaskInfo.getTaskUid()).thenReturn(222);
+        givenClientTaskSucceeded(createIndexTaskInfo, createIndexTask, 222);
         givenSuccessfulSettingsInitialization(recreatedIndex, taskInfo, 333);
         var engine = newEngine();
 
@@ -685,13 +692,64 @@ class MeilisearchSearchEngineTest {
 
         assertThat(engine.available()).isTrue();
         verify(meilisearchClient).waitForTask(111);
+        verify(meilisearchClient).getTask(111);
         verify(meilisearchClient).waitForTask(222);
+        verify(meilisearchClient).getTask(222);
         verify(recreatedIndex).waitForTask(333, 60_000, 100);
         verify(eventPublisher, never()).publishEvent(isA(HaloDocumentRebuildRequestEvent.class));
 
         engine.onApplicationEvent(new PluginStartedEvent(this));
 
         verify(eventPublisher).publishEvent(isA(HaloDocumentRebuildRequestEvent.class));
+    }
+
+    @Test
+    void initializationShouldRetryWhenCreateIndexTaskFails() throws Exception {
+        when(clientFactory.create(any(Config.class))).thenReturn(meilisearchClient);
+        when(meilisearchClient.index("halo")).thenReturn(index);
+        when(meilisearchClient.getIndex("halo"))
+            .thenThrow(new MeilisearchException("index not found"));
+        when(meilisearchClient.createIndex("halo", "meilisearchId")).thenReturn(createIndexTaskInfo);
+        when(createIndexTaskInfo.getTaskUid()).thenReturn(321);
+        when(meilisearchClient.getTask(321)).thenReturn(createIndexTask);
+        when(createIndexTask.getStatus()).thenReturn(TaskStatus.FAILED);
+        doReturn(retryFuture)
+            .when(retryExecutor)
+            .schedule(any(Runnable.class), eq(5L), eq(TimeUnit.SECONDS));
+        var engine = newEngine();
+
+        engine.onApplicationEvent(new ConfigUpdatedEvent(this, properties()));
+
+        assertThat(engine.available()).isFalse();
+        verify(meilisearchClient).waitForTask(321);
+        verify(meilisearchClient).getTask(321);
+        verify(index, never()).updateSettings(any(Settings.class));
+        verify(retryExecutor).schedule(any(Runnable.class), eq(5L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void initializationShouldRetryWhenDeleteLegacyIndexTaskFails() throws Exception {
+        when(clientFactory.create(any(Config.class))).thenReturn(meilisearchClient);
+        when(meilisearchClient.index("halo")).thenReturn(index);
+        when(meilisearchClient.getIndex("halo")).thenReturn(legacyIndex);
+        when(legacyIndex.getPrimaryKey()).thenReturn("metadataName");
+        when(meilisearchClient.deleteIndex("halo")).thenReturn(deleteIndexTaskInfo);
+        when(deleteIndexTaskInfo.getTaskUid()).thenReturn(111);
+        when(meilisearchClient.getTask(111)).thenReturn(deleteIndexTask);
+        when(deleteIndexTask.getStatus()).thenReturn(TaskStatus.FAILED);
+        doReturn(retryFuture)
+            .when(retryExecutor)
+            .schedule(any(Runnable.class), eq(5L), eq(TimeUnit.SECONDS));
+        var engine = newEngine();
+
+        engine.onApplicationEvent(new ConfigUpdatedEvent(this, properties()));
+
+        assertThat(engine.available()).isFalse();
+        verify(meilisearchClient).waitForTask(111);
+        verify(meilisearchClient).getTask(111);
+        verify(meilisearchClient, never()).createIndex("halo", "meilisearchId");
+        verify(index, never()).updateSettings(any(Settings.class));
+        verify(retryExecutor).schedule(any(Runnable.class), eq(5L), eq(TimeUnit.SECONDS));
     }
 
     private void givenSuccessfulInitialization(Client client, Index index, TaskInfo taskInfo,
@@ -720,6 +778,13 @@ class MeilisearchSearchEngineTest {
         throws Exception {
         when(taskInfo.getTaskUid()).thenReturn(taskUid);
         when(index.getTask(taskUid)).thenReturn(task);
+        when(task.getStatus()).thenReturn(TaskStatus.SUCCEEDED);
+    }
+
+    private void givenClientTaskSucceeded(TaskInfo taskInfo, Task task, int taskUid)
+        throws Exception {
+        when(taskInfo.getTaskUid()).thenReturn(taskUid);
+        when(meilisearchClient.getTask(taskUid)).thenReturn(task);
         when(task.getStatus()).thenReturn(TaskStatus.SUCCEEDED);
     }
 

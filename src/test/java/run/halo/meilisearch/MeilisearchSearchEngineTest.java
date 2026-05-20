@@ -1,6 +1,7 @@
 package run.halo.meilisearch;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -19,6 +20,7 @@ import com.meilisearch.sdk.Config;
 import com.meilisearch.sdk.Index;
 import com.meilisearch.sdk.SearchRequest;
 import com.meilisearch.sdk.exceptions.MeilisearchException;
+import com.meilisearch.sdk.model.IndexStats;
 import com.meilisearch.sdk.model.SearchResult;
 import com.meilisearch.sdk.model.Settings;
 import com.meilisearch.sdk.model.Task;
@@ -118,6 +120,9 @@ class MeilisearchSearchEngineTest {
 
     @Mock
     SearchResult searchResult;
+
+    @Mock
+    IndexStats indexStats;
 
     @Mock
     TaskInfo documentTaskInfo;
@@ -670,7 +675,6 @@ class MeilisearchSearchEngineTest {
         engine.onApplicationEvent(new ConfigUpdatedEvent(this, properties()));
 
         assertThat(engine.available()).isTrue();
-        verify(meilisearchClient).waitForTask(321);
         verify(meilisearchClient).getTask(321);
         verify(eventPublisher).publishEvent(isA(HaloDocumentRebuildRequestEvent.class));
     }
@@ -691,9 +695,7 @@ class MeilisearchSearchEngineTest {
         engine.onApplicationEvent(new ConfigUpdatedEvent(this, properties()));
 
         assertThat(engine.available()).isTrue();
-        verify(meilisearchClient).waitForTask(111);
         verify(meilisearchClient).getTask(111);
-        verify(meilisearchClient).waitForTask(222);
         verify(meilisearchClient).getTask(222);
         verify(recreatedIndex).waitForTask(333, 60_000, 100);
         verify(eventPublisher, never()).publishEvent(isA(HaloDocumentRebuildRequestEvent.class));
@@ -721,7 +723,6 @@ class MeilisearchSearchEngineTest {
         engine.onApplicationEvent(new ConfigUpdatedEvent(this, properties()));
 
         assertThat(engine.available()).isFalse();
-        verify(meilisearchClient).waitForTask(321);
         verify(meilisearchClient).getTask(321);
         verify(index, never()).updateSettings(any(Settings.class));
         verify(retryExecutor).schedule(any(Runnable.class), eq(5L), eq(TimeUnit.SECONDS));
@@ -745,11 +746,33 @@ class MeilisearchSearchEngineTest {
         engine.onApplicationEvent(new ConfigUpdatedEvent(this, properties()));
 
         assertThat(engine.available()).isFalse();
-        verify(meilisearchClient).waitForTask(111);
         verify(meilisearchClient).getTask(111);
         verify(meilisearchClient, never()).createIndex("halo", "meilisearchId");
         verify(index, never()).updateSettings(any(Settings.class));
         verify(retryExecutor).schedule(any(Runnable.class), eq(5L), eq(TimeUnit.SECONDS));
+    }
+
+    @Test
+    void getStatsShouldUseCurrentIndex() throws Exception {
+        givenSuccessfulInitialization(meilisearchClient, index, taskInfo, "halo", 123);
+        when(clientFactory.create(any(Config.class))).thenReturn(meilisearchClient);
+        when(index.getStats()).thenReturn(indexStats);
+        var engine = newEngine();
+        engine.onApplicationEvent(new ConfigUpdatedEvent(this, properties()));
+
+        var stats = engine.getStats();
+
+        assertThat(stats).isSameAs(indexStats);
+        verify(index).getStats();
+    }
+
+    @Test
+    void getStatsShouldFailWhenEngineIsUnavailable() {
+        var engine = newEngine();
+
+        assertThatThrownBy(engine::getStats)
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("Meilisearch is not available");
     }
 
     private void givenSuccessfulInitialization(Client client, Index index, TaskInfo taskInfo,

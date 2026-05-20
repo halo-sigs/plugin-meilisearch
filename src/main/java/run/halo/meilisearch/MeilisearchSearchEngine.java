@@ -7,6 +7,7 @@ import com.meilisearch.sdk.Config;
 import com.meilisearch.sdk.Index;
 import com.meilisearch.sdk.SearchRequest;
 import com.meilisearch.sdk.exceptions.MeilisearchException;
+import com.meilisearch.sdk.model.IndexStats;
 import com.meilisearch.sdk.model.SearchResult;
 import com.meilisearch.sdk.model.Searchable;
 import com.meilisearch.sdk.model.Settings;
@@ -292,13 +293,40 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
                 + operation);
         }
         var taskUid = taskInfo.getTaskUid();
-        this.meilisearchClient.waitForTask(taskUid);
-
-        var task = this.meilisearchClient.getTask(taskUid);
+        var task = waitForClientTaskFinished(taskUid);
         if (task == null || task.getStatus() != TaskStatus.SUCCEEDED) {
             throw new MeilisearchException("Meilisearch task failed while trying to "
                 + operation + ": " + describeTask(task));
         }
+    }
+
+    private Task waitForClientTaskFinished(int taskUid) throws MeilisearchException {
+        var startedAt = System.currentTimeMillis();
+        while (true) {
+            var task = this.meilisearchClient.getTask(taskUid);
+            if (isTaskFinished(task)) {
+                return task;
+            }
+            if (System.currentTimeMillis() - startedAt >= TASK_WAIT_TIMEOUT_MS) {
+                throw new MeilisearchException("Timed out while waiting for Meilisearch task "
+                    + taskUid);
+            }
+            try {
+                Thread.sleep(TASK_WAIT_INTERVAL_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new MeilisearchException("Interrupted while waiting for Meilisearch task "
+                    + taskUid);
+            }
+        }
+    }
+
+    private boolean isTaskFinished(Task task) {
+        if (task == null) {
+            return true;
+        }
+        var status = task.getStatus();
+        return status != TaskStatus.ENQUEUED && status != TaskStatus.PROCESSING;
     }
 
     private String describeTask(Task task) {
@@ -387,6 +415,14 @@ public class MeilisearchSearchEngine implements SearchEngine, DisposableBean,
     @Override
     public boolean available() {
         return available;
+    }
+
+    IndexStats getStats() throws MeilisearchException {
+        var currentIndex = this.index;
+        if (!available || currentIndex == null) {
+            throw new IllegalStateException("Meilisearch is not available");
+        }
+        return currentIndex.getStats();
     }
 
     private HaloDocument cleanDocument(HaloDocument document) {

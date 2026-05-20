@@ -19,6 +19,8 @@ import run.halo.app.infra.utils.JsonUtils;
 @Component
 public class ConfigListener implements Reconciler<Reconciler.Request> {
 
+    static final String CONFIG_MAP_NAME = "meilisearch-engine-config";
+
     private final ExtensionClient client;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -29,6 +31,10 @@ public class ConfigListener implements Reconciler<Reconciler.Request> {
 
     @Override
     public Result reconcile(Request request) {
+        if (!CONFIG_MAP_NAME.equals(request.name())) {
+            return Result.doNotRetry();
+        }
+
         return client.fetch(ConfigMap.class, request.name())
             .map(configMap -> {
                 if (ExtensionUtil.isDeleted(configMap)) {
@@ -36,11 +42,15 @@ public class ConfigListener implements Reconciler<Reconciler.Request> {
                 }
 
                 var data = configMap.getData();
-                if (data.containsKey("basic")) {
+                if (data != null && data.containsKey("basic")) {
                     var json = data.get("basic");
                     try {
                         var meilisearchProperties =
                             JsonUtils.mapper().readValue(json, MeilisearchProperties.class);
+                        if (!hasUsableConfiguration(meilisearchProperties)) {
+                            log.debug("Ignoring incomplete Meilisearch configuration");
+                            return Result.doNotRetry();
+                        }
                         eventPublisher.publishEvent(
                             new ConfigUpdatedEvent(this, meilisearchProperties)
                         );
@@ -53,16 +63,24 @@ public class ConfigListener implements Reconciler<Reconciler.Request> {
             .orElseGet(Result::doNotRetry);
     }
 
+    private boolean hasUsableConfiguration(MeilisearchProperties properties) {
+        return properties != null
+            && properties.getHost() != null
+            && !properties.getHost().isBlank()
+            && properties.getIndexName() != null
+            && !properties.getIndexName().isBlank();
+    }
+
     @Override
     public Controller setupWith(ControllerBuilder builder) {
         var configMap = new ConfigMap();
         var matcher = DefaultExtensionMatcher.builder(client, configMap.groupVersionKind())
             .fieldSelector(FieldSelector.of(
-                QueryFactory.equal("metadata.name", "meilisearch-engine-config")))
+                QueryFactory.equal("metadata.name", CONFIG_MAP_NAME)))
             .build();
         return builder
             .extension(configMap)
-            .syncAllOnStart(false)
+            .syncAllOnStart(true)
             .onAddMatcher(matcher)
             .onDeleteMatcher(matcher)
             .onUpdateMatcher(matcher)
